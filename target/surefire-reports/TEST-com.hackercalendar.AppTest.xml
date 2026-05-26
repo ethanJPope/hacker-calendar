@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd" version="3.0.1" name="com.hackercalendar.AppTest" time="0.03" tests="1" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd" version="3.0.2" name="com.hackercalendar.AppTest" time="0.005" tests="0" errors="0" skipped="0" failures="0">
   <properties>
     <property name="java.specification.version" value="25"/>
     <property name="sun.cpu.isalist" value="amd64"/>
     <property name="sun.jnu.encoding" value="Cp1252"/>
-    <property name="java.class.path" value="D:\Programming Projects\Hacker Calendar\hacker-calendar\target\test-classes;D:\Programming Projects\Hacker Calendar\hacker-calendar\target\classes;C:\Users\ethan\.m2\repository\org\junit\jupiter\junit-jupiter-api\5.11.0\junit-jupiter-api-5.11.0.jar;C:\Users\ethan\.m2\repository\org\opentest4j\opentest4j\1.3.0\opentest4j-1.3.0.jar;C:\Users\ethan\.m2\repository\org\junit\platform\junit-platform-commons\1.11.0\junit-platform-commons-1.11.0.jar;C:\Users\ethan\.m2\repository\org\apiguardian\apiguardian-api\1.1.2\apiguardian-api-1.1.2.jar;C:\Users\ethan\.m2\repository\org\junit\jupiter\junit-jupiter-params\5.11.0\junit-jupiter-params-5.11.0.jar;"/>
+    <property name="java.class.path" value="D:\Programming Projects\Hacker Calendar\hacker-calendar\target\test-classes;D:\Programming Projects\Hacker Calendar\hacker-calendar\target\classes;C:\Users\ethan\.m2\repository\org\openjfx\javafx-controls\25.0.1\javafx-controls-25.0.1.jar;C:\Users\ethan\.m2\repository\org\openjfx\javafx-controls\25.0.1\javafx-controls-25.0.1-win.jar;C:\Users\ethan\.m2\repository\org\openjfx\javafx-graphics\25.0.1\javafx-graphics-25.0.1.jar;C:\Users\ethan\.m2\repository\org\openjfx\javafx-graphics\25.0.1\javafx-graphics-25.0.1-win.jar;C:\Users\ethan\.m2\repository\org\openjfx\javafx-base\25.0.1\javafx-base-25.0.1.jar;C:\Users\ethan\.m2\repository\org\openjfx\javafx-base\25.0.1\javafx-base-25.0.1-win.jar;"/>
     <property name="java.vm.vendor" value="Oracle Corporation"/>
     <property name="sun.arch.data.model" value="64"/>
     <property name="user.variant" value=""/>
@@ -15,9 +15,9 @@
     <property name="sun.java.launcher" value="SUN_STANDARD"/>
     <property name="user.country" value="US"/>
     <property name="sun.boot.library.path" value="C:\Program Files\Java\jdk-25\bin"/>
-    <property name="sun.java.command" value="C:\Users\ethan\AppData\Local\Temp\surefire7181900096686114596\surefirebooter-20260526084238539_3.jar C:\Users\ethan\AppData\Local\Temp\surefire7181900096686114596 2026-05-26T08-42-36_031-jvmRun1 surefire-20260526084238539_1tmp surefire_0-20260526084238539_2tmp"/>
+    <property name="sun.java.command" value="C:\Users\ethan\AppData\Local\Temp\surefire7968893651991150796\surefirebooter-20260526122204857_3.jar C:\Users\ethan\AppData\Local\Temp\surefire7968893651991150796 2026-05-26T12-22-04_232-jvmRun1 surefire-20260526122204857_1tmp surefire_0-20260526122204857_2tmp"/>
     <property name="jdk.debug" value="release"/>
-    <property name="surefire.test.class.path" value="D:\Programming Projects\Hacker Calendar\hacker-calendar\target\test-classes;D:\Programming Projects\Hacker Calendar\hacker-calendar\target\classes;C:\Users\ethan\.m2\repository\org\junit\jupiter\junit-jupiter-api\5.11.0\junit-jupiter-api-5.11.0.jar;C:\Users\ethan\.m2\repository\org\opentest4j\opentest4j\1.3.0\opentest4j-1.3.0.jar;C:\Users\ethan\.m2\repository\org\junit\platform\junit-platform-commons\1.11.0\junit-platform-commons-1.11.0.jar;C:\Users\ethan\.m2\repository\org\apiguardian\apiguardian-api\1.1.2\apiguardian-api-1.1.2.jar;C:\Users\ethan\.m2\repository\org\junit\jupiter\junit-jupiter-params\5.11.0\junit-jupiter-params-5.11.0.jar;"/>
+    <property name="surefire.test.class.path" value="D:\Programming Projects\Hacker Calendar\hacker-calendar\target\test-classes;D:\Programming Projects\Hacker Calendar\hacker-calendar\target\classes;C:\Users\ethan\.m2\repository\org\openjfx\javafx-controls\25.0.1\javafx-controls-25.0.1.jar;C:\Users\ethan\.m2\repository\org\openjfx\javafx-controls\25.0.1\javafx-controls-25.0.1-win.jar;C:\Users\ethan\.m2\repository\org\openjfx\javafx-graphics\25.0.1\javafx-graphics-25.0.1.jar;C:\Users\ethan\.m2\repository\org\openjfx\javafx-graphics\25.0.1\javafx-graphics-25.0.1-win.jar;C:\Users\ethan\.m2\repository\org\openjfx\javafx-base\25.0.1\javafx-base-25.0.1.jar;C:\Users\ethan\.m2\repository\org\openjfx\javafx-base\25.0.1\javafx-base-25.0.1-win.jar;"/>
     <property name="sun.cpu.endian" value="little"/>
     <property name="user.home" value="C:\Users\ethan"/>
     <property name="user.language" value="en"/>
@@ -30,7 +30,7 @@
     <property name="line.separator" value="&#10;"/>
     <property name="java.vm.specification.vendor" value="Oracle Corporation"/>
     <property name="java.specification.name" value="Java Platform API Specification"/>
-    <property name="surefire.real.class.path" value="C:\Users\ethan\AppData\Local\Temp\surefire7181900096686114596\surefirebooter-20260526084238539_3.jar"/>
+    <property name="surefire.real.class.path" value="C:\Users\ethan\AppData\Local\Temp\surefire7968893651991150796\surefirebooter-20260526122204857_3.jar"/>
     <property name="user.script" value=""/>
     <property name="sun.management.compiler" value="HotSpot 64-Bit Tiered Compilers"/>
     <property name="java.runtime.version" value="25+37-LTS-3491"/>
@@ -59,5 +59,4 @@
     <property name="sun.io.unicode.encoding" value="UnicodeLittle"/>
     <property name="java.class.version" value="69.0"/>
   </properties>
-  <testcase name="shouldAnswerWithTrue" classname="com.hackercalendar.AppTest" time="0.016"/>
 </testsuite>

@@ -1,10 +1,16 @@
 package com.hackercalendar;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import javafx.application.Application;
@@ -24,14 +30,20 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 
-public class App extends Application { 
+public class App extends Application {
+    private static final Path EVENTS_FILE = Path.of("events.csv");
+    
     private YearMonth currentMonth = YearMonth.now();
     private List<CalendarEvent> events = new ArrayList<>();
-
+    private DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("h:mm a");
+    
     private Label monthLabel;
+    private Label hackClubHoursLabel;
     private GridPane calendarGrid;
+
 
     @Override
     public void start(Stage stage) {
@@ -49,7 +61,7 @@ public class App extends Application {
         root.setTop(topBar);
         root.setCenter(mainLayout);
 
-        loadSampleEvents();
+        loadEvents();
         drawCalendar();
 
         Scene scene = new Scene(root, 1000, 700);
@@ -82,10 +94,22 @@ public class App extends Application {
             drawCalendar();
         });
 
+        hackClubHoursLabel = new Label();
+        hackClubHoursLabel.setStyle(
+                "-fx-text-fill: #475569;" +
+                "-fx-font-size: 12px;"
+        );
+
+        HBox monthControls = new HBox(12, todayButton, previousButton, monthLabel, nextButton);
+        monthControls.setAlignment(Pos.CENTER_RIGHT);
+
+        VBox monthArea = new VBox(4, monthControls, hackClubHoursLabel);
+        monthArea.setAlignment(Pos.CENTER_RIGHT);
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        HBox topBar = new HBox(12, appTitle, spacer, todayButton, previousButton, monthLabel, nextButton);
+        HBox topBar = new HBox(12, appTitle, spacer, monthArea);
         topBar.setPadding(new Insets(16));
         topBar.setAlignment(Pos.CENTER_LEFT);
 
@@ -113,12 +137,69 @@ public class App extends Application {
         eventLabel.setStyle(
                 "-fx-background-color: " + color + ";" +
                 "-fx-text-fill: white;" +
-                "-fx-padding: 3 6 3 6;" +
+                "-fx-padding: 1 5 1 5;" +
                 "-fx-background-radius: 4;" +
                 "-fx-font-size: 11px;"
         );
 
         return eventLabel;
+    }
+
+    private void saveEvents() {
+        List<String> lines = new ArrayList<>();
+
+        for (CalendarEvent event : events) {
+            String line = event.getTitle() + ","
+                    + event.getDate() + ","
+                    + event.getStartTime() + ","
+                    + event.getEndTime() + ","
+                    + event.getCategory() + ","
+                    + event.getColor();
+
+            lines.add(line);
+        }
+
+        try {
+            Files.write(
+                    EVENTS_FILE,
+                    lines,
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.TRUNCATE_EXISTING
+            );
+        } catch (IOException error) {
+            System.out.println("Could not save events: " + error.getMessage());
+        }
+    }
+
+    private void loadEvents() {
+        events.clear();
+
+        if (!Files.exists(EVENTS_FILE)) {
+            return;
+        }
+
+        try {
+            List<String> lines = Files.readAllLines(EVENTS_FILE);
+
+            for (String line : lines) {
+                String[] parts = line.split(",");
+
+                if (parts.length == 6) {
+                    CalendarEvent event = new CalendarEvent(
+                            parts[0],
+                            LocalDate.parse(parts[1]),
+                            parseTime(parts[2]),
+                            parseTime(parts[3]),
+                            parts[4],
+                            parts[5]
+                    );
+
+                    events.add(event);
+                }
+            }
+        } catch (IOException error) {
+            System.out.println("Could not load events: " + error.getMessage());
+        }
     }
 
     private void loadSampleEvents() {
@@ -172,21 +253,41 @@ public class App extends Application {
     private VBox createDayCell(int day) {
         Label dayNumber = new Label(String.valueOf(day));
 
-        VBox dayCell = new VBox(6);
+        VBox dayCell = new VBox(4);
         dayCell.getChildren().add(dayNumber);
 
         LocalDate date = currentMonth.atDay(day);
 
-        for (CalendarEvent event : events) {
-            if (event.getDate().equals(date)) {
-                Label eventLabel = createEventLabel(
-                event.getTitle() + " " + event.getStartTime(),
-                event.getColor()
-        );
+        int visibleEventCount = 0;
+        int hiddenEventCount = 0;
 
-        dayCell.getChildren().add(eventLabel);
-    }
-}
+        List<CalendarEvent> eventsForDate = getEventsForDate(date);
+
+        for (CalendarEvent event : eventsForDate) {
+            if (visibleEventCount < 1) {
+                Label eventLabel = createEventLabel(
+                        formatEventText(event),
+                        event.getColor()
+                );
+
+                dayCell.getChildren().add(eventLabel);
+                visibleEventCount++;
+            } else {
+                hiddenEventCount++;
+            }
+        }
+
+        if (hiddenEventCount > 0) {
+            Label moreLabel = new Label("+" + hiddenEventCount + " more");
+            moreLabel.setStyle(
+                    "-fx-text-fill: #475569;" +
+                    "-fx-font-size: 10px;" +
+                    "-fx-font-weight: bold;" +
+                    "-fx-padding: 0 0 0 2;"
+            );
+
+            dayCell.getChildren().add(moreLabel);
+        }
 
         dayCell.setMinSize(120, 90);
         dayCell.setPadding(new Insets(8));
@@ -199,9 +300,61 @@ public class App extends Application {
 
         LocalDate selectedDate = currentMonth.atDay(day);
         dayCell.setOnMouseClicked(event -> {
-            showAddEventDialog(selectedDate);
+            showDayDetailsDialog(selectedDate);
         });
+
+        Rectangle clip  = new Rectangle(120, 90);
+        clip.setArcWidth(6);
+        clip.setArcHeight(6);
         return dayCell;
+    }
+
+    private void showDayDetailsDialog(LocalDate date) {
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("Day Details");
+
+        ButtonType addEventButtonType = new ButtonType("Add Event", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(addEventButtonType, ButtonType.CLOSE);
+
+        VBox content = new VBox(10);
+        content.setPadding(new Insets(10));
+
+        Label dateLabel = new Label(date.toString());
+        dateLabel.setStyle(
+                "-fx-font-size: 16px;" +
+                "-fx-font-weight: bold;"
+        );
+
+        content.getChildren().add(dateLabel);
+
+        List<CalendarEvent> eventsForDate = getEventsForDate(date);
+
+        if (eventsForDate.isEmpty()) {
+            Label emptyLabel = new Label("No events yet.");
+            emptyLabel.setStyle("-fx-text-fill: #64748b;");
+            content.getChildren().add(emptyLabel);
+        } else {
+            for (CalendarEvent event : eventsForDate) {
+                Label eventLabel = createEventLabel(
+                        formatEventText(event),
+                        event.getColor()
+                );
+
+                content.getChildren().add(eventLabel);
+            }
+        }
+
+        dialog.getDialogPane().setContent(content);
+
+        dialog.setResultConverter(button -> {
+            if (button == addEventButtonType) {
+                showAddEventDialog(date);
+            }
+
+            return null;
+        });
+
+        dialog.showAndWait();
     }
 
     private void showAddEventDialog(LocalDate date) {
@@ -252,6 +405,7 @@ public class App extends Application {
 
         dialog.showAndWait().ifPresent(event -> {
             events.add(event);
+            saveEvents();
             drawCalendar();
         });
     }
@@ -265,6 +419,7 @@ public class App extends Application {
 
         DateTimeFormatter monthFormatter = DateTimeFormatter.ofPattern("MMMM yyyy");
         monthLabel.setText(currentMonth.format(monthFormatter));
+        updateHackClubHoursLabel();
 
         String[] daysOfWeek = {
                 "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
@@ -302,9 +457,59 @@ public class App extends Application {
         }
     }
 
+    private void updateHackClubHoursLabel() {
+        Duration total = getHackClubTimeForCurrentMonth();
+
+        long hours = total.toHours();
+        long minutes = total.toMinutesPart();
+
+        hackClubHoursLabel.setText("Hack Club: " + hours + "h " + minutes + "m scheduled");
+    }
+
+    private Duration getHackClubTimeForCurrentMonth() {
+        Duration total = Duration.ZERO;
+
+        for (CalendarEvent event : events) {
+            boolean isHackClub = event.getCategory().equals("Hack Club");
+            boolean isInCurrentMonth = YearMonth.from(event.getDate()).equals(currentMonth);
+
+            if (isHackClub && isInCurrentMonth) {
+                Duration eventDuration = Duration.between(
+                        event.getStartTime(),
+                        event.getEndTime()
+                );
+
+                total = total.plus(eventDuration);
+            }
+        }
+
+        return total;
+    }
+
+    private List<CalendarEvent> getEventsForDate(LocalDate date) {
+        List<CalendarEvent> eventsForDate = new ArrayList<>();
+
+        for (CalendarEvent event : events) {
+            if (event.getDate().equals(date)) {
+                eventsForDate.add(event);
+            }
+        }
+
+        eventsForDate.sort(Comparator.comparing(CalendarEvent::getStartTime));
+
+        return eventsForDate;
+    }
+
     private LocalTime parseTime(String text) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("H:mm");
         return LocalTime.parse(text, formatter);
+    }
+
+    private String formatEventText(CalendarEvent event) {
+        String startTime = event.getStartTime().format(timeFormatter);
+        String endTime = event.getEndTime().format(timeFormatter);
+
+        return event.getTitle() + " " + startTime + "-" + endTime;
     }
 
     public static void main(String[] args) {
