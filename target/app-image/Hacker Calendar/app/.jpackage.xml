@@ -1,0 +1,5 @@
+<?xml version="1.0" ?>
+<jpackage-state version="25" platform="windows">
+  <app-version>1.0.0</app-version>
+  <main-launcher>Hacker Calendar</main-launcher>
+  <main-class>com.hackercalendar.App</main-class></jpackage-state>

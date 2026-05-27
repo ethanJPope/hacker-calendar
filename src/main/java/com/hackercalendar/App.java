@@ -47,7 +47,8 @@ import javafx.stage.Window;
 
 
 public class App extends Application {
-    private static final Path EVENTS_FILE = Path.of("events.csv");
+    private static final Path LEGACY_EVENTS_FILE = Path.of("events.csv");
+    private static final Path EVENTS_FILE = getEventsFilePath();
     
     private YearMonth currentMonth = YearMonth.now();
     private List<CalendarEvent> events = new ArrayList<>();
@@ -222,6 +223,7 @@ public class App extends Application {
         }
 
         try {
+            Files.createDirectories(EVENTS_FILE.getParent());
             Files.write(
                     EVENTS_FILE,
                     lines,
@@ -235,6 +237,7 @@ public class App extends Application {
 
     private void loadEvents() {
         events.clear();
+        migrateLegacyEventsFile();
 
         if (!Files.exists(EVENTS_FILE)) {
             return;
@@ -261,6 +264,29 @@ public class App extends Application {
             }
         } catch (IOException error) {
             System.out.println("Could not load events: " + error.getMessage());
+        }
+    }
+
+    private static Path getEventsFilePath() {
+        String appData = System.getenv("APPDATA");
+
+        if (appData != null && !appData.isBlank()) {
+            return Path.of(appData, "Hacker Calendar", "events.csv");
+        }
+
+        return Path.of(System.getProperty("user.home"), ".hacker-calendar", "events.csv");
+    }
+
+    private void migrateLegacyEventsFile() {
+        if (Files.exists(EVENTS_FILE) || !Files.exists(LEGACY_EVENTS_FILE)) {
+            return;
+        }
+
+        try {
+            Files.createDirectories(EVENTS_FILE.getParent());
+            Files.copy(LEGACY_EVENTS_FILE, EVENTS_FILE);
+        } catch (IOException error) {
+            System.out.println("Could not migrate old events file: " + error.getMessage());
         }
     }
 
