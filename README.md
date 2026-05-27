@@ -1,5 +1,8 @@
 # Hacker Calendar
 
+_There are bugs for mac users_
+
+
 A Hack Club project where I created an application that is fully programed in java. For the UI I used Java FX, this way i was able to use my knowladge of java on this project fully. For some theming I used a .css file to store all of the colors. To save the task that you put in the calendar I used a simple .csv file to store all of it.
 
 <img width="997" height="691" alt="image" src="https://github.com/user-attachments/assets/5ec3f5a3-dc80-4f50-bd35-da9e25fc3a7a" />
