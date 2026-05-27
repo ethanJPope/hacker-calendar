@@ -1,5 +1,11 @@
 package com.hackercalendar;
 
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.Image;
+import java.awt.SystemTray;
+import java.awt.TrayIcon;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -13,7 +19,10 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -25,6 +34,7 @@ import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
@@ -32,6 +42,9 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
+import javafx.stage.Window;
+
 
 public class App extends Application {
     private static final Path EVENTS_FILE = Path.of("events.csv");
@@ -44,17 +57,22 @@ public class App extends Application {
     private Label hackClubHoursLabel;
     private GridPane calendarGrid;
 
+    private TrayIcon hackClubTrayIcon;
+
 
     @Override
     public void start(Stage stage) {
         BorderPane root = new BorderPane();
+        root.getStyleClass().add("app-root");
 
-        HBox topBar = createTopBar();
+        HBox topBar = createTopBar(stage);
         HBox categoryBar = createCategoryBar();
 
         calendarGrid = new GridPane();
+        calendarGrid.getStyleClass().add("calendar-grid");
 
         BorderPane mainLayout = new BorderPane();
+        mainLayout.getStyleClass().add("main-layout");
         mainLayout.setTop(categoryBar);
         mainLayout.setCenter(calendarGrid);
 
@@ -64,20 +82,57 @@ public class App extends Application {
         loadEvents();
         drawCalendar();
 
+        Timeline taskbarTimer = new Timeline(
+                new KeyFrame(javafx.util.Duration.minutes(1), event -> {
+                    updateHackClubTrayIcon();
+                })
+        );
+
+        taskbarTimer.setCycleCount(Timeline.INDEFINITE);
+        taskbarTimer.play();
+
         Scene scene = new Scene(root, 1000, 700);
+        scene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
 
         stage.setTitle("Hacker Calendar");
         stage.setScene(scene);
+        stage.initStyle(StageStyle.UNDECORATED);
+        stage.setOnCloseRequest(event -> exitApplication());
         stage.show();
+
+        setupHackClubTrayIcon();
     }
 
-    private HBox createTopBar() {
+    private HBox createTopBar(Stage stage) {
         Label appTitle = new Label("Hacker Calendar");
+        appTitle.getStyleClass().add("app-title");
 
         Button todayButton = new Button("Today");
+        todayButton.getStyleClass().add("primary-button");
         Button previousButton = new Button("<");
+        previousButton.getStyleClass().add("icon-button");
         monthLabel = new Label();
+        monthLabel.getStyleClass().add("month-label");
         Button nextButton = new Button(">");
+        nextButton.getStyleClass().add("icon-button");
+
+        Button minimizeButton = new Button("−");
+        Button maximizeButton = new Button("□");
+        Button closeButton = new Button("X");
+
+        minimizeButton.getStyleClass().add("window-button");
+        maximizeButton.getStyleClass().add("window-button");
+        closeButton.getStyleClass().add("window-close-button");
+
+        minimizeButton.setOnAction(event -> {
+            stage.setIconified(true);
+        });
+
+        maximizeButton.setOnAction(event -> {
+            stage.setMaximized(!stage.isMaximized());
+        });
+
+        closeButton.setOnAction(event -> exitApplication());
 
         todayButton.setOnAction(event -> {
             currentMonth = YearMonth.now();
@@ -95,10 +150,7 @@ public class App extends Application {
         });
 
         hackClubHoursLabel = new Label();
-        hackClubHoursLabel.setStyle(
-                "-fx-text-fill: #475569;" +
-                "-fx-font-size: 12px;"
-        );
+        hackClubHoursLabel.getStyleClass().add("hours-label");
 
         HBox monthControls = new HBox(12, todayButton, previousButton, monthLabel, nextButton);
         monthControls.setAlignment(Pos.CENTER_RIGHT);
@@ -109,9 +161,14 @@ public class App extends Application {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        HBox topBar = new HBox(12, appTitle, spacer, monthArea);
+        HBox windowControls = new HBox(6, minimizeButton, maximizeButton, closeButton);
+        windowControls.setAlignment(Pos.CENTER_RIGHT);
+
+        HBox topBar = new HBox(12, appTitle, spacer, monthArea, windowControls);
+        topBar.getStyleClass().add("top-bar");
         topBar.setPadding(new Insets(16));
         topBar.setAlignment(Pos.CENTER_LEFT);
+        makeStageDraggable(stage, topBar);
 
         return topBar;
     }
@@ -123,7 +180,14 @@ public class App extends Application {
         Button breaksButton = new Button("Breaks");
         Button tasksButton = new Button("Tasks");
 
+        workButton.getStyleClass().add("category-button");
+        vacationButton.getStyleClass().add("category-button");
+        hackClubButton.getStyleClass().add("category-button");
+        breaksButton.getStyleClass().add("category-button");
+        tasksButton.getStyleClass().add("category-button");
+
         HBox categoryBar = new HBox(10, workButton, vacationButton, hackClubButton, breaksButton, tasksButton);
+        categoryBar.getStyleClass().add("category-bar");
         categoryBar.setPadding(new Insets(0, 16, 16, 16));
         categoryBar.setAlignment(Pos.CENTER_LEFT);
 
@@ -134,12 +198,10 @@ public class App extends Application {
         Label eventLabel = new Label(text);
 
         eventLabel.setMaxWidth(Double.MAX_VALUE);
+        eventLabel.getStyleClass().add("event-label");
         eventLabel.setStyle(
                 "-fx-background-color: " + color + ";" +
-                "-fx-text-fill: white;" +
-                "-fx-padding: 1 5 1 5;" +
-                "-fx-background-radius: 4;" +
-                "-fx-font-size: 11px;"
+                "-fx-text-fill: white;"
         );
 
         return eventLabel;
@@ -252,11 +314,17 @@ public class App extends Application {
 
     private VBox createDayCell(int day) {
         Label dayNumber = new Label(String.valueOf(day));
+        dayNumber.getStyleClass().add("day-number");
 
         VBox dayCell = new VBox(4);
+        dayCell.getStyleClass().add("day-cell");
         dayCell.getChildren().add(dayNumber);
 
         LocalDate date = currentMonth.atDay(day);
+        if (date.equals(LocalDate.now())) {
+            dayCell.getStyleClass().add("today-cell");
+            dayNumber.getStyleClass().add("today-number");
+        }
 
         int visibleEventCount = 0;
         int hiddenEventCount = 0;
@@ -279,24 +347,13 @@ public class App extends Application {
 
         if (hiddenEventCount > 0) {
             Label moreLabel = new Label("+" + hiddenEventCount + " more");
-            moreLabel.setStyle(
-                    "-fx-text-fill: #475569;" +
-                    "-fx-font-size: 10px;" +
-                    "-fx-font-weight: bold;" +
-                    "-fx-padding: 0 0 0 2;"
-            );
+            moreLabel.getStyleClass().add("more-label");
 
             dayCell.getChildren().add(moreLabel);
         }
 
         dayCell.setMinSize(120, 90);
         dayCell.setPadding(new Insets(8));
-        dayCell.setStyle(
-            "-fx-background-color: white;" +
-            "-fx-border-color: #d0d7de;" +
-            "-fx-border-radius: 6;" +
-            "-fx-background-radius: 6;"
-        );
 
         LocalDate selectedDate = currentMonth.atDay(day);
         dayCell.setOnMouseClicked(event -> {
@@ -313,19 +370,19 @@ public class App extends Application {
 
     private void showDayDetailsDialog(LocalDate date) {
         Dialog<Void> dialog = new Dialog<>();
+        dialog.initStyle(StageStyle.UNDECORATED);
+        applyTheme(dialog);
         dialog.setTitle("Day Details");
 
         ButtonType addEventButtonType = new ButtonType("Add Event", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(addEventButtonType, ButtonType.CLOSE);
+        dialog.getDialogPane().setHeader(createDialogTitleBar(dialog, "Day Details"));
 
         VBox content = new VBox(10);
         content.setPadding(new Insets(10));
 
         Label dateLabel = new Label(date.toString());
-        dateLabel.setStyle(
-                "-fx-font-size: 16px;" +
-                "-fx-font-weight: bold;"
-        );
+        dateLabel.getStyleClass().add("dialog-title");
 
         content.getChildren().add(dateLabel);
 
@@ -333,7 +390,7 @@ public class App extends Application {
 
         if (eventsForDate.isEmpty()) {
             Label emptyLabel = new Label("No events yet.");
-            emptyLabel.setStyle("-fx-text-fill: #64748b;");
+            emptyLabel.getStyleClass().add("muted-label");
             content.getChildren().add(emptyLabel);
         } else {
             for (CalendarEvent event : eventsForDate) {
@@ -344,17 +401,22 @@ public class App extends Application {
                 
                 Button editButton = new Button("Edit");
                 Button deleteButton = new Button("Delete");
+                editButton.getStyleClass().add("secondary-button");
+                deleteButton.getStyleClass().add("danger-button");
 
                 editButton.setOnAction(e -> {
                     dialog.close();
-                    showEditEventDialog(event);
+
+                    Platform.runLater(() -> {
+                        showEditEventDialog(event);
+                    });
                 });
                 
                 deleteButton.setOnAction(e -> {
                     events.remove(event);
                     saveEvents();
                     drawCalendar();
-
+                    updateHackClubTrayIcon();
                     dialog.close();
                     //showDayDetailsDialog(date);
                 });
@@ -368,12 +430,15 @@ public class App extends Application {
 
         dialog.getDialogPane().setContent(content);
 
-        dialog.setResultConverter(button -> {
-            if (button == addEventButtonType) {
-                showAddEventDialog(date);
-            }
+        Node addEventButton = dialog.getDialogPane().lookupButton(addEventButtonType);
 
-            return null;
+        addEventButton.addEventFilter(javafx.event.ActionEvent.ACTION, e -> {
+            e.consume();
+            dialog.close();
+
+            Platform.runLater(() -> {
+                showAddEventDialog(date);
+            });
         });
 
         dialog.showAndWait();
@@ -381,10 +446,13 @@ public class App extends Application {
 
     private void showEditEventDialog(CalendarEvent originalEvent) {
         Dialog<CalendarEvent> dialog = new Dialog<>();
+        dialog.initStyle(StageStyle.UNDECORATED);
         dialog.setTitle("Edit Event");
 
         ButtonType saveButtonType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
+        applyTheme(dialog);
+        dialog.getDialogPane().setHeader(createDialogTitleBar(dialog, "Edit Event"));
 
         TextField titleField = new TextField(originalEvent.getTitle());
 
@@ -399,10 +467,7 @@ public class App extends Application {
         categoryChoice.setValue(originalEvent.getCategory());
 
         Label errorLabel = new Label();
-        errorLabel.setStyle(
-                "-fx-text-fill: #dc2626;" +
-                "-fx-font-size: 12px;"
-        );
+        errorLabel.getStyleClass().add("error-label");
 
         VBox form = new VBox(10);
         form.getChildren().addAll(
@@ -447,19 +512,30 @@ public class App extends Application {
             return null;
         });
 
-        dialog.showAndWait().ifPresent(event -> {
-            events.add(event);
+        dialog.showAndWait().ifPresent(updatedEvent -> {
+            int eventIndex = events.indexOf(originalEvent);
+
+            if (eventIndex >= 0) {
+                events.set(eventIndex, updatedEvent);
+            } else {
+                events.add(updatedEvent);
+            }
+
             saveEvents();
             drawCalendar();
+            updateHackClubTrayIcon();
         });
     }
 
     private void showAddEventDialog(LocalDate date) {
         Dialog<CalendarEvent> dialog = new Dialog<>();
+        dialog.initStyle(StageStyle.UNDECORATED);
+        applyTheme(dialog);
         dialog.setTitle("Add Event");
 
         ButtonType addButtonType = new ButtonType("Add", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(addButtonType, ButtonType.CANCEL);
+        dialog.getDialogPane().setHeader(createDialogTitleBar(dialog, "Add Event"));
 
         TextField titleField = new TextField();
         titleField.setPromptText("Title");
@@ -475,10 +551,7 @@ public class App extends Application {
         categoryChoice.setValue("Hack Club");
 
         Label errorLabel = new Label();
-        errorLabel.setStyle(
-                "-fx-text-fill: #dc2626;" +
-                "-fx-font-size: 12px;"
-        );
+        errorLabel.getStyleClass().add("error-label");
 
         VBox form = new VBox(10);
         form.getChildren().addAll(
@@ -526,6 +599,7 @@ public class App extends Application {
             events.add(event);
             saveEvents();
             drawCalendar();
+            updateHackClubTrayIcon();
         });
     }
 
@@ -546,6 +620,7 @@ public class App extends Application {
 
         for (int column = 0; column < daysOfWeek.length; column++) {
             Label dayLabel = new Label(daysOfWeek[column]);
+            dayLabel.getStyleClass().add("weekday-label");
             dayLabel.setMinHeight(30);
             calendarGrid.add(dayLabel, column, 0);
         }
@@ -655,6 +730,146 @@ public class App extends Application {
         String endTime = event.getEndTime().format(timeFormatter);
 
         return event.getTitle() + " " + startTime + "-" + endTime;
+    }
+
+    private void applyTheme(Dialog<?> dialog) {
+        dialog.getDialogPane().getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
+    }
+
+    @Override
+    public void stop() {
+        removeHackClubTrayIcon();
+    }
+
+    private void exitApplication() {
+        removeHackClubTrayIcon();
+        Platform.exit();
+        System.exit(0);
+    }
+
+    private void removeHackClubTrayIcon() {
+        if (hackClubTrayIcon != null && SystemTray.isSupported()) {
+            SystemTray.getSystemTray().remove(hackClubTrayIcon);
+            hackClubTrayIcon = null;
+        }
+    }
+
+    private HBox createDialogTitleBar(Dialog<?> dialog, String title) {
+        Label titleLabel = new Label(title);
+        titleLabel.getStyleClass().add("dialog-window-title");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Button closeButton = new Button("X");
+        closeButton.getStyleClass().add("window-close-button");
+        closeButton.setOnAction(event -> dialog.close());
+
+        HBox titleBar = new HBox(12, titleLabel, spacer, closeButton);
+        titleBar.getStyleClass().add("dialog-title-bar");
+        titleBar.setAlignment(Pos.CENTER_LEFT);
+        titleBar.setPadding(new Insets(10, 10, 10, 14));
+
+        makeDialogDraggable(dialog, titleBar);
+
+        return titleBar;
+    }
+
+    private void makeStageDraggable(Stage stage, Node dragHandle) {
+        final double[] dragOffset = new double[2];
+
+        dragHandle.addEventHandler(MouseEvent.MOUSE_PRESSED, event -> {
+            dragOffset[0] = event.getScreenX() - stage.getX();
+            dragOffset[1] = event.getScreenY() - stage.getY();
+        });
+
+        dragHandle.addEventHandler(MouseEvent.MOUSE_DRAGGED, event -> {
+            if (stage.isMaximized()) {
+                stage.setMaximized(false);
+            }
+
+            stage.setX(event.getScreenX() - dragOffset[0]);
+            stage.setY(event.getScreenY() - dragOffset[1]);
+        });
+    }
+
+    private void makeDialogDraggable(Dialog<?> dialog, Node dragHandle) {
+        final double[] dragOffset = new double[2];
+
+        dragHandle.addEventHandler(MouseEvent.MOUSE_PRESSED, event -> {
+            Window window = dialog.getDialogPane().getScene().getWindow();
+            dragOffset[0] = event.getScreenX() - window.getX();
+            dragOffset[1] = event.getScreenY() - window.getY();
+        });
+
+        dragHandle.addEventHandler(MouseEvent.MOUSE_DRAGGED, event -> {
+            Window window = dialog.getDialogPane().getScene().getWindow();
+            window.setX(event.getScreenX() - dragOffset[0]);
+            window.setY(event.getScreenY() - dragOffset[1]);
+        });
+    }
+
+    private boolean isHackClubTimeNow() {
+        LocalDate today = LocalDate.now();
+        LocalTime now = LocalTime.now();
+
+        for (CalendarEvent event : events) {
+            boolean isHackClub = event.getCategory().equals("Hack Club");
+            boolean isToday = event.getDate().equals(today);
+            boolean hasStarted = !now.isBefore(event.getStartTime());
+            boolean hasNotEnded = now.isBefore(event.getEndTime());
+
+            if (isHackClub && isToday && hasStarted && hasNotEnded) {
+                return true;
+            }
+        
+        }
+
+        return false;
+    }
+
+    private void setupHackClubTrayIcon() {
+        if (!SystemTray.isSupported()) {
+            return;
+        }
+
+        try {
+            hackClubTrayIcon = new TrayIcon(createTrayImage(false), "Hack Club inactive");
+            hackClubTrayIcon.setImageAutoSize(true);
+
+            SystemTray.getSystemTray().add(hackClubTrayIcon);
+            updateHackClubTrayIcon();
+        } catch (Exception error) {
+            System.out.println("Could not create tray icon: " + error.getMessage());
+        }
+    }
+
+    private void updateHackClubTrayIcon() {
+        if (hackClubTrayIcon == null) {
+            return;
+        }
+
+        boolean active = isHackClubTimeNow();
+
+        hackClubTrayIcon.setImage(createTrayImage(active));
+        hackClubTrayIcon.setToolTip(active
+                ? "Hack Club time: work on projects"
+                : "Hack Club inactive");
+    }
+
+    private Image createTrayImage(boolean active) {
+        int size = 16;
+        BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+
+        Graphics2D graphics = image.createGraphics();
+        graphics.setColor(active ? new Color(155, 92, 255) : new Color(75, 65, 92));
+        graphics.fillOval(2, 2, 12, 12);
+
+        graphics.setColor(Color.WHITE);
+        graphics.drawString("H", 5, 12);
+
+        graphics.dispose();
+        return image;
     }
 
     public static void main(String[] args) {
