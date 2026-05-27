@@ -1,0 +1,50 @@
+name: Build macOS Installer
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: oracle
+          java-version: "25"
+          cache: maven
+
+      - name: Build app and copy runtime dependencies
+        run: |
+          mvn clean package dependency:copy-dependencies \
+            -DincludeScope=runtime \
+            -DoutputDirectory=target/installer-input
+          cp target/hacker-calendar-1.0-SNAPSHOT.jar target/installer-input/
+
+      - name: Build macOS DMG
+        run: |
+          mkdir -p target/installer
+          jpackage \
+            --type dmg \
+            --name "Hacker Calendar" \
+            --app-version "1.0.2" \
+            --vendor "Ethan" \
+            --input target/installer-input \
+            --main-jar hacker-calendar-1.0-SNAPSHOT.jar \
+            --main-class com.hackercalendar.App \
+            --module-path target/installer-input \
+            --add-modules javafx.controls \
+            --dest target/installer
+
+      - name: Upload DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: Hacker-Calendar-macOS
+          path: target/installer/*.dmg
