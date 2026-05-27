@@ -16,6 +16,7 @@ import java.util.List;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
@@ -30,7 +31,6 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
-import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 
 public class App extends Application {
@@ -303,9 +303,11 @@ public class App extends Application {
             showDayDetailsDialog(selectedDate);
         });
 
-        Rectangle clip  = new Rectangle(120, 90);
-        clip.setArcWidth(6);
-        clip.setArcHeight(6);
+        // Rectangle clip  = new Rectangle(120, 90);
+        // clip.setArcWidth(6);
+        // clip.setArcHeight(6);
+
+        // dayCell.setClip(clip);
         return dayCell;
     }
 
@@ -339,8 +341,28 @@ public class App extends Application {
                         formatEventText(event),
                         event.getColor()
                 );
+                
+                Button editButton = new Button("Edit");
+                Button deleteButton = new Button("Delete");
 
-                content.getChildren().add(eventLabel);
+                editButton.setOnAction(e -> {
+                    dialog.close();
+                    showEditEventDialog(event);
+                });
+                
+                deleteButton.setOnAction(e -> {
+                    events.remove(event);
+                    saveEvents();
+                    drawCalendar();
+
+                    dialog.close();
+                    //showDayDetailsDialog(date);
+                });
+
+                HBox eventRow = new HBox(8, eventLabel, editButton, deleteButton);
+                eventRow.setAlignment(Pos.CENTER_LEFT);
+
+                content.getChildren().add(eventRow);
             }
         }
 
@@ -355,6 +377,81 @@ public class App extends Application {
         });
 
         dialog.showAndWait();
+    }
+
+    private void showEditEventDialog(CalendarEvent originalEvent) {
+        Dialog<CalendarEvent> dialog = new Dialog<>();
+        dialog.setTitle("Edit Event");
+
+        ButtonType saveButtonType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
+
+        TextField titleField = new TextField(originalEvent.getTitle());
+
+        TextField startTimeField = new TextField(originalEvent.getStartTime().toString());        
+        startTimeField.setPromptText("Start Time, like 14:00");
+
+        TextField endTimeField = new TextField(originalEvent.getEndTime().toString());
+        endTimeField.setPromptText("End Time, like 16:00");
+
+        ChoiceBox<String> categoryChoice = new ChoiceBox<>();
+        categoryChoice.getItems().addAll("Work", "Vacation", "Hack Club", "Break", "Task");
+        categoryChoice.setValue(originalEvent.getCategory());
+
+        Label errorLabel = new Label();
+        errorLabel.setStyle(
+                "-fx-text-fill: #dc2626;" +
+                "-fx-font-size: 12px;"
+        );
+
+        VBox form = new VBox(10);
+        form.getChildren().addAll(
+                new Label("Date: " + originalEvent.getDate()),
+                titleField,
+                startTimeField,
+                endTimeField,
+                categoryChoice,
+                errorLabel
+        );
+        dialog.getDialogPane().setContent(form);
+
+        Node saveButton = dialog.getDialogPane().lookupButton(saveButtonType);
+
+        saveButton.addEventFilter(javafx.event.ActionEvent.ACTION, actionEvent -> {
+            String errorMessage = validateEventInput(
+                    titleField.getText(),
+                    startTimeField.getText(),
+                    endTimeField.getText()
+            );
+
+            if (errorMessage != null) {
+                errorLabel.setText(errorMessage);
+                actionEvent.consume();
+            }
+        });
+
+        dialog.setResultConverter(button -> {
+            if (button == saveButtonType) {
+                String category = categoryChoice.getValue();
+
+                return new CalendarEvent(
+                        titleField.getText(),
+                        originalEvent.getDate(),
+                        parseTime(startTimeField.getText()),
+                        parseTime(endTimeField.getText()),
+                        category,
+                        getColorForCategory(category)
+                );
+            }
+
+            return null;
+        });
+
+        dialog.showAndWait().ifPresent(event -> {
+            events.add(event);
+            saveEvents();
+            drawCalendar();
+        });
     }
 
     private void showAddEventDialog(LocalDate date) {
@@ -377,15 +474,37 @@ public class App extends Application {
         categoryChoice.getItems().addAll("Work", "Vacation", "Hack Club", "Break", "Task");
         categoryChoice.setValue("Hack Club");
 
+        Label errorLabel = new Label();
+        errorLabel.setStyle(
+                "-fx-text-fill: #dc2626;" +
+                "-fx-font-size: 12px;"
+        );
+
         VBox form = new VBox(10);
         form.getChildren().addAll(
             new Label("Date: " + date),
             titleField,
             startTimeField,
             endTimeField,
-            categoryChoice
+            categoryChoice,
+            errorLabel
         );
         dialog.getDialogPane().setContent(form);
+
+        Node addButton = dialog.getDialogPane().lookupButton(addButtonType);
+
+        addButton.addEventFilter(javafx.event.ActionEvent.ACTION, actionEvent -> {
+            String errorMessage = validateEventInput(
+                    titleField.getText(),
+                    startTimeField.getText(),
+                    endTimeField.getText()
+            );
+
+            if (errorMessage != null) {
+                errorLabel.setText(errorMessage);
+                actionEvent.consume();
+            }
+        });
 
         dialog.setResultConverter(button -> {
             if (button == addButtonType) {
@@ -457,6 +576,32 @@ public class App extends Application {
         }
     }
 
+    private String validateEventInput(String title, String startTimeText, String endTimeText) {
+        if (title.isBlank()) {
+            return "Title cannot be empty.";
+        }
+
+        LocalTime startTime;
+        LocalTime endTime;
+
+        try {
+            startTime = parseTime(startTimeText);
+        } catch (Exception error) {
+            return "Start time must look like 8:00 or 14:30.";
+        }
+
+        try {
+            endTime = parseTime(endTimeText);
+        } catch (Exception error) {
+            return "End time must look like 9:00 or 16:30.";
+        }
+
+        if (!endTime.isAfter(startTime)) {
+            return "End time must be after start time.";
+        }
+
+        return null;
+    }
     private void updateHackClubHoursLabel() {
         Duration total = getHackClubTimeForCurrentMonth();
 

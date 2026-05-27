@@ -12,6 +12,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>25</maven.compiler.release>
         <javafx.version>25.0.1</javafx.version>
+        <junit.version>5.13.4</junit.version>
     </properties>
 
     <dependencies>
@@ -19,6 +20,13 @@
           <groupId>org.openjfx</groupId>
           <artifactId>javafx-controls</artifactId>
           <version>${javafx.version}</version>
+      </dependency>
+
+      <dependency>
+          <groupId>org.junit.jupiter</groupId>
+          <artifactId>junit-jupiter</artifactId>
+          <version>${junit.version}</version>
+          <scope>test</scope>
       </dependency>
     </dependencies>
 
@@ -37,6 +45,12 @@
                 <configuration>
                     <mainClass>com.hackercalendar.App</mainClass>
                 </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.4</version>
             </plugin>
         </plugins>
     </build>
